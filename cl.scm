@@ -94,8 +94,9 @@
 (define (L expr)
   (reify (beta-reduce (L-index expr))))
 (define (reify expr)
-  ; because we're coming from CL, there are no free indices
-  ; we'll do a shift-like walk TODO explain
+  ; because we're coming from CL, there are no free de bruijn indices.
+  ; reify creates a concrete variable name on every use of abstraction,
+  ;  and uses de bruijn index substitution to update its occurences.
   (define next 0)
   (let r ((e expr))
     (cond ((indexed-abstraction? e)
@@ -118,7 +119,8 @@
 	  (repeat (beta-reduce-inner expr))
 	  expr))))
 (define (beta-reduce-inner expr)
-  ; returns pair (expr . did-reduce)
+  ; does beta-reduction.
+  ; returns pair: (expr . did-reduce)
   (cond ((and (combination? expr)
               (indexed-abstraction? (operator expr)))
          (let* ((t (indexed-body (operator expr)))
@@ -136,7 +138,8 @@
                 (e (make-combination (car brl) (car brr))))
            (cons e (or (cdr brl) (cdr brr)))))
         (else (cons expr #f))))
-(define (substitute expr j s) ; [j->s](expr)
+(define (substitute expr j s)
+  ; [j->s](expr) substitutes index j with term s in expr.
   (cond ((index? expr)
          (let ((k (get-index expr)))
            (if (= k j) s (make-index k))))
@@ -149,7 +152,8 @@
           (substitute (operator expr) j s)
           (substitute (operand expr) j s)))
         (else expr)))
-(define (shift c d expr) ; \uparrow_c^d(expr)
+(define (shift c d expr)
+  ; \uparrow_c^d(expr) shifts indices above cutoff c in expr by amount d.
   (cond ((index? expr)
          (let ((k (get-index expr)))
            (make-index (if (< k c) k (+ k d)))))
@@ -163,6 +167,7 @@
           (shift c d (operand expr))))
         (else expr)))
 (define (L-index expr)
+  ; convert CL to de bruijn indexed lambda calculus.
   (cond ((same? 'I expr)
          (make-indexed-abstraction (make-index 0)))
         ((same? 'K expr)
