@@ -13,8 +13,8 @@
 ;;; lambda -> CL ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
-;;; Transform lambda expressions into combinatory
-;;;  logic expressions of the BCIKS system.
+;;; transform lambda expressions into combinatory
+;;;  logic expressions of the BCIKS system
 (define (T expr)
   (cond ((abstraction? expr)
          (let ((e (body expr))
@@ -55,44 +55,15 @@
                            (T (operand expr))))
         (else expr)))
 
-;;; Syntax definitions
-(define (abstraction? expr)
-  (and (pair? expr) (eq? (car expr) 'lambda)))
-(define (make-abstraction var body)
-  `(lambda (,var) ,body))
-(define (parameter expr) (caadr expr))
-(define (body expr) (caddr expr))
-
-(define (combination? expr)
-  (and (and (and (pair? expr)
-                 (not (eq? (car expr) 'lambda)))
-            (not (eq? (car expr) *index*)))
-       (not (eq? (car expr) *lambda-indexed*))))
-(define (make-combination operator operand)
-  `(,operator ,operand))
-(define (operator expr) (car expr))
-(define (operand expr) (cadr expr))
-
-(define same? eq?)
-(define (free? var expr)
-  (cond ((abstraction? expr)
-         (if (same? var (parameter expr))
-             #f
-             (free? var (body expr))))
-        ((combination? expr)
-         (or (free? var (operator expr))
-             (free? var (operand expr))))
-        ((same? var expr) #t)
-        (else #f)))
-
 
 ;;;;;;;;;;;;;;;;;;;;
 ;;; CL -> lambda ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
-;;; Transform combinatory logic expressions into lambda expressions.
+;;; transform combinatory logic expressions into lambda expressions
 (define (L expr)
   (reify (beta-reduce (L-index expr))))
+
 (define (reify expr)
   ; because we're coming from CL, there are no free de bruijn indices.
   ; reify creates a concrete variable name on every use of abstraction,
@@ -194,13 +165,53 @@
           (L-index (operand expr))))
         (else expr)))
 
+
+;;;;;;;;;;;;;;;;;;;;
+;;;    Syntax    ;;;
+;;;;;;;;;;;;;;;;;;;;
+
 (define *index* (generate-uninterned-symbol 'index))
+(define *lambda-indexed* (generate-uninterned-symbol 'lambda-indexed))
+
+; classic lambda expressions
+(define (abstraction? expr)
+  (and (pair? expr) (eq? (car expr) 'lambda)))
+(define (make-abstraction var body)
+  `(lambda (,var) ,body))
+(define (parameter expr) (caadr expr))
+(define (body expr) (caddr expr))
+
+; curried function application
+(define (combination? expr)
+  (and (and (and (pair? expr)
+                 (not (eq? (car expr) 'lambda)))
+            (not (eq? (car expr) *index*)))
+       (not (eq? (car expr) *lambda-indexed*))))
+(define (make-combination operator operand)
+  `(,operator ,operand))
+(define (operator expr) (car expr))
+(define (operand expr) (cadr expr))
+
+(define same? eq?)
+(define (free? var expr)
+  (cond ((abstraction? expr)
+         (if (same? var (parameter expr))
+             #f
+             (free? var (body expr))))
+        ((combination? expr)
+         (or (free? var (operator expr))
+             (free? var (operand expr))))
+        ((same? var expr) #t)
+        (else #f)))
+
+
+; de bruijn index
 (define (index? idx)
   (and (pair? idx) (eq? (car idx) *index*)))
 (define (make-index n) (cons *index* `(,n)))
 (define (get-index expr) (cadr expr))
 
-(define *lambda-indexed* (generate-uninterned-symbol 'lambda-indexed))
+; variable-free (indexed) lambda abstraction
 (define (indexed-abstraction? expr)
   (and (pair? expr) (eq? (car expr) *lambda-indexed*)))
 (define (make-indexed-abstraction body)
@@ -214,6 +225,7 @@
            (make-index l))
           (else l))))
 
+; reify to go from indices to concrete variable names
 (define reify-alphabet "abcdefghijklmnopqrstuvwxyz")
 (define (reify-name n)
   (let* ((total (string-length reify-alphabet))
