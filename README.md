@@ -1,22 +1,34 @@
 # lambda-CL
 
-A simple transformer from a lambda expression to a combinatory logic
-expression in Schönfinkel's BCIKS system.
+### `λx.λy.(y x) → (C I)`
+
+A transformer from lambda expressions to combinatory logic in Schönfinkel's
+BCIKS system.
 Expanded from some small work done by Gerald Jay Sussman.
 
-Simply load [`cl.scm`](./cl.scm) using your preferred scheme interpreter and
+### BCIKS quick guide
+
+- `B f g x = f (g x)` (composition)
+- `C f x y = f y x` (order swap)
+- `I x = x` (identity)
+- `K x y = x` (drop arg)
+- `S f g x = (f x) (g x)` (duplicate arg)
+
+### Usage
+
+Simply load [`./cl.scm`](./cl.scm) using your preferred scheme interpreter and
 use the `T` and `T-trace` functions. The combinators `B`, `C`, `I`, `K`, `S`
 are loaded as well. The `T-trace` function prints a trace of the
 transformations numbered conventionally (and including η-reduction):
 
-1. T[x] => x
-2. T[(E₁ E₂)] => (T[E₁] T[E₂])
-3. T[λx.E] => (**K** T[E]) (if x is not free in E)
-4. T[λx.x] => **I**
-5. T[λx.λy.E] => T[λx.T[λy.E]] (if x is free in E)
-6. T[λx.(E₁ E₂)] => (**S** T[λx.E₁] T[λx.E₂]) (if x is free in both E₁ and E₂)
-7. T[λx.(E₁ E₂)] => (**C** T[λx.E₁] T[E₂]) (if x is free in E₁ but not E₂)
-8. T[λx.(E₁ E₂)] => (**B** T[E₁] T[λx.E₂]) (if x is free in E₂ but not E₁)
+1. `T[x] => x`
+2. `T[(E₁ E₂)] => (T[E₁] T[E₂])`
+3. `T[λx.E] => (K T[E])` if x is not free in E
+4. `T[λx.x] => I`
+5. `T[λx.λy.E] => T[λx.T[λy.E]]` if x is free in E
+6. `T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂])` if x is free in both E₁ and E₂
+7. `T[λx.(E₁ E₂)] => (C T[λx.E₁] T[E₂])` if x is free in E₁ but not E₂
+8. `T[λx.(E₁ E₂)] => (B T[E₁] T[λx.E₂])` if x is free in E₂ but not E₁
 
 ```sh
 $ mit-scheme -load cl.scm
