@@ -6,7 +6,7 @@ A transformer from lambda expressions to combinatory logic in Schönfinkel's
 BCIKS system.
 Expanded from some small work done by Gerald Jay Sussman.
 
-### BCIKS quick guide
+## BCIKS quick guide
 
 - `B f g x = f (g x)` (composition)
 - `C f x y = f y x` (order swap)
@@ -14,7 +14,7 @@ Expanded from some small work done by Gerald Jay Sussman.
 - `K x y = x` (drop arg)
 - `S f g x = (f x) (g x)` (duplicate arg)
 
-### Usage
+## Usage
 
 Simply load [`./cl.scm`](./cl.scm) using your preferred scheme interpreter and
 use the `T` and `T-trace` functions. The combinators `B`, `C`, `I`, `K`, `S`
@@ -38,6 +38,8 @@ $ mit-scheme -load cl.scm
 > (sin 3)
 ;Value: .1411200080598672
 ```
+
+### Transformation Trace
 
 The `T-trace` function prints a trace of the transformations numbered
 conventionally (and including η-reduction):
