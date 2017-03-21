@@ -24,6 +24,14 @@ are loaded as well.
 $ mit-scheme -load cl.scm
 ```
 
+### Currying
+
+Arguments must be given in curried form. The `T` function can parse lambda
+expressions and curried function applications (i.e. pairs of the form
+**`(a b)`**). The `L` function can only parse curried function applications.
+Any free variables will be left intact unless a variable name conflicts with
+a combinator (watch out for `i`!).
+
 ### T: λ -> CL
 
 To convert from expressions of lambda calculus to combinatory logic, use the
@@ -33,7 +41,7 @@ To convert from expressions of lambda calculus to combinatory logic, use the
 > (T '(lambda (x) (lambda (y) (y x))))
 ;Value: (c i)
 
-> (T '(lambda (x) (lambda (y) (+ (sin x) (sin y)))))
+> (T '(lambda (x) (lambda (y) ((+ (sin x)) (sin y)))))
 ;Value: ((c ((b b) ((b +) sin))) sin)
 
 > (eval (T '(((lambda (x)
