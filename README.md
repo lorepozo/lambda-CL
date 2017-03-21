@@ -18,17 +18,7 @@ Expanded from some small work done by Gerald Jay Sussman.
 
 Simply load [`./cl.scm`](./cl.scm) using your preferred scheme interpreter and
 use the `T` and `T-trace` functions. The combinators `B`, `C`, `I`, `K`, `S`
-are loaded as well. The `T-trace` function prints a trace of the
-transformations numbered conventionally (and including η-reduction):
-
-1. `T[x] => x`
-2. `T[(E₁ E₂)] => (T[E₁] T[E₂])`
-3. `T[λx.E] => (K T[E])` if x is not free in E
-4. `T[λx.x] => I`
-5. `T[λx.λy.E] => T[λx.T[λy.E]]` if x is free in E
-6. `T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂])` if x is free in both E₁ and E₂
-7. `T[λx.(E₁ E₂)] => (C T[λx.E₁] T[E₂])` if x is free in E₁ but not E₂
-8. `T[λx.(E₁ E₂)] => (B T[E₁] T[λx.E₂])` if x is free in E₂ but not E₁
+are loaded as well.
 
 ```sh
 $ mit-scheme -load cl.scm
@@ -42,10 +32,27 @@ $ mit-scheme -load cl.scm
         user-initial-environment)
 ;Value: .1411200080598672
 
-> (sin 3)
+> (((c i) 3) sin)
 ;Value: .1411200080598672
 
+> (sin 3)
+;Value: .1411200080598672
+```
 
+The `T-trace` function prints a trace of the transformations numbered
+conventionally (and including η-reduction):
+
+1. `T[x] => x`
+2. `T[(E₁ E₂)] => (T[E₁] T[E₂])`
+3. `T[λx.E] => (K T[E])` if x is not free in E
+4. `T[λx.x] => I`
+5. `T[λx.λy.E] => T[λx.T[λy.E]]` if x is free in E
+6. `T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂])` if x is free in both E₁ and E₂
+7. `T[λx.(E₁ E₂)] => (C T[λx.E₁] T[E₂])` if x is free in E₁ but not E₂
+8. `T[λx.(E₁ E₂)] => (B T[E₁] T[λx.E₂])` if x is free in E₂ but not E₁
+
+
+```scheme
 > (T-trace '(lambda (x) (lambda (y) (y x)))
 ((t (lambda (x) (lambda (y) (y x)))) =>)
 ((t (lambda (x) (t (lambda (y) (y x))))) by 5)
