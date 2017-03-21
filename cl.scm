@@ -8,6 +8,11 @@
 (define (((S f) g) x)
   ((f x) (g x)))
 
+
+;;;;;;;;;;;;;;;;;;;;
+;;; lambda -> CL ;;;
+;;;;;;;;;;;;;;;;;;;;
+
 ;;; Transform lambda expressions into combinatory
 ;;;  logic expressions of the BCIKS system.
 (define (T expr)
@@ -50,74 +55,6 @@
                            (T (operand expr))))
         (else expr)))
 
-;;; Print the trace of the transformation
-(define (T-trace expr)
-  (pp `((T ,expr) =>))
-  (cond ((abstraction? expr)
-         (let ((e (body expr))
-               (x (parameter expr)))
-           (cond ((and (and (combination? e)
-                            (same? x (operand e)))
-                       (not (free? x (operator e))))
-                  (pp `((T ,(operator e)) by eta-reduction))
-                  (newline)
-                  (T-trace (operator e)))
-                 ((not (free? x e))
-                  (pp `((K (T ,e)) by 3))
-                  (newline)
-                  (make-combination 'K (T-trace e)))
-                 ((same? x e)
-                  (pp `(I by 4))
-                  (newline)
-                  'I)
-                 ((and (abstraction? e)
-                       (free? x (body e)))
-                  (pp `((T ,(make-abstraction x `(T ,e))) by 5))
-                  (newline)
-                  (T-trace (make-abstraction x (T-trace e))))
-                 ((combination? e)
-		  (let* ((l (operator e))
-			 (r (operand e))
-			 (lf (free? x l))
-			 (rf (free? x r)))
-		    (cond ((and lf rf)
-			   (pp `(((S (T ,(make-abstraction x l)))
-				  (T ,(make-abstraction x r)))
-				 by 6))
-			   (newline)
-			   (make-combination
-			    (make-combination 'S
-			     (T-trace (make-abstraction x l)))
-			    (T-trace (make-abstraction x r))))
-			  (lf
-			   (pp `(((C (T ,(make-abstraction x l)))
-				  (T ,r))
-				 by 7))
-			   (newline)
-			   (make-combination
-			    (make-combination 'C
-			     (T-trace (make-abstraction x l)))
-			    (T-trace r)))
-			  (rf
-			   (pp `(((B (T ,l))
-				  (T ,(make-abstraction x r)))
-				 by 8))
-			   (newline)
-			   (make-combination
-			    (make-combination 'B
-			     (T-trace l))
-			    (T-trace (make-abstraction x r)))))))
-                 (else (error "invalid expression")))))
-        ((combination? expr)
-         (pp `(((T ,(operator expr)) (T ,(operand expr))) by 2))
-         (newline)
-         (make-combination (T-trace (operator expr))
-                           (T-trace (operand expr))))
-        (else
-	 (pp `((, expr) by 1))
-	 (newline)
-	 expr)))
-
 ;;; Syntax definitions
 (define (abstraction? expr)
   (and (pair? expr) (eq? (car expr) 'lambda)))
@@ -127,8 +64,10 @@
 (define (body expr) (caddr expr))
 
 (define (combination? expr)
-  (and (pair? expr)
-       (not (eq? (car expr) 'lambda))))
+  (and (and (and (pair? expr)
+                 (not (eq? (car expr) 'lambda)))
+            (not (eq? (car expr) *index*)))
+       (not (eq? (car expr) *lambda-indexed*))))
 (define (make-combination operator operand)
   `(,operator ,operand))
 (define (operator expr) (car expr))
@@ -145,4 +84,137 @@
              (free? var (operand expr))))
         ((same? var expr) #t)
         (else #f)))
+
+
+;;;;;;;;;;;;;;;;;;;;
+;;; CL -> lambda ;;;
+;;;;;;;;;;;;;;;;;;;;
+
+;;; Transform combinatory logic expressions into lambda expressions.
+(define (L expr)
+  (reify (beta-reduce (L-index expr))))
+(define (reify expr)
+  ; because we're coming from CL, there are no free indices
+  ; we'll do a shift-like walk TODO explain
+  (define next 0)
+  (let r ((e expr))
+    (cond ((indexed-abstraction? e)
+           (set! next (+ next 1))
+           (let* ((name (reify-name next))
+                  (t (indexed-body e))
+                  (ne (substitute t 0 name)))
+             (make-abstraction name (r ne))))
+          ((combination? e)
+           (make-combination
+            (r (operator e))
+            (r (operand e))))
+          (else e))))
+(define (beta-reduce expr)
+  ; repeats beta-reduction until no change
+  (let repeat ((br (beta-reduce-inner expr)))
+    (let ((did-reduce (cdr br))
+          (expr (car br)))
+      (if did-reduce
+	  (repeat (beta-reduce-inner expr))
+	  expr))))
+(define (beta-reduce-inner expr)
+  ; returns pair (expr . did-reduce)
+  (cond ((and (combination? expr)
+              (indexed-abstraction? (operator expr)))
+         (let* ((t (indexed-body (operator expr)))
+                (v (operand expr))
+                (br (beta-reduce-inner
+		     (shift 0 -1 (substitute t 0 (shift 0 1 v))))))
+           (cons (car br) #t)))
+        ((indexed-abstraction? expr)
+         (let* ((br (beta-reduce-inner (indexed-body expr)))
+                (e (make-indexed-abstraction (car br))))
+           (cons e (cdr br))))
+        ((combination? expr)
+         (let* ((brl (beta-reduce-inner (operator expr)))
+                (brr (beta-reduce-inner (operand expr)))
+                (e (make-combination (car brl) (car brr))))
+           (cons e (or (cdr brl) (cdr brr)))))
+        (else (cons expr #f))))
+(define (substitute expr j s) ; [j->s](expr)
+  (cond ((index? expr)
+         (let ((k (get-index expr)))
+           (if (= k j) s (make-index k))))
+        ((indexed-abstraction? expr)
+         (let ((t (indexed-body expr)))
+           (make-indexed-abstraction
+            (substitute t (+ j 1) (shift 0 1 s)))))
+        ((combination? expr)
+         (make-combination
+          (substitute (operator expr) j s)
+          (substitute (operand expr) j s)))
+        (else expr)))
+(define (shift c d expr) ; \uparrow_c^d(expr)
+  (cond ((index? expr)
+         (let ((k (get-index expr)))
+           (make-index (if (< k c) k (+ k d)))))
+        ((indexed-abstraction? expr)
+         (let ((t (indexed-body expr)))
+           (make-indexed-abstraction
+            (shift (+ c 1) d t))))
+        ((combination? expr)
+         (make-combination
+          (shift c d (operator expr))
+          (shift c d (operand expr))))
+        (else expr)))
+(define (L-index expr)
+  (cond ((same? 'I expr)
+         (make-indexed-abstraction (make-index 0)))
+        ((same? 'K expr)
+         (make-indexed-abstraction
+          (make-indexed-abstraction (make-index 1))))
+        ((same? 'C expr)
+         (make-indexed-abstraction
+          (make-indexed-abstraction
+           (make-indexed-abstraction
+            (list->indexed '((2 0) 1))))))
+        ((same? 'B expr)
+         (make-indexed-abstraction
+          (make-indexed-abstraction
+           (make-indexed-abstraction
+            (list->indexed '(2 (1 0)))))))
+        ((same? 'S expr)
+         (make-indexed-abstraction
+          (make-indexed-abstraction
+           (make-indexed-abstraction
+            (list->indexed '((2 0) (1 0)))))))
+        ((combination? expr)
+         (make-combination
+          (L-index (operator expr))
+          (L-index (operand expr))))
+        (else expr)))
+
+(define *index* (generate-uninterned-symbol 'index))
+(define (index? idx)
+  (and (pair? idx) (eq? (car idx) *index*)))
+(define (make-index n) (cons *index* `(,n)))
+(define (get-index expr) (cadr expr))
+
+(define *lambda-indexed* (generate-uninterned-symbol 'lambda-indexed))
+(define (indexed-abstraction? expr)
+  (and (pair? expr) (eq? (car expr) *lambda-indexed*)))
+(define (make-indexed-abstraction body)
+  (cons *lambda-indexed* `(,body)))
+(define (indexed-body expr) (cadr expr))
+(define (list->indexed lst)
+  (let walk ((l lst))
+    (cond ((pair? l)
+           (cons (walk (car l)) (walk (cdr l))))
+          ((number? l)
+           (make-index l))
+          (else l))))
+
+(define reify-alphabet "abcdefghijklmnopqrstuvwxyz")
+(define (reify-name n)
+  (let* ((total (string-length reify-alphabet))
+         (n (- n 1))
+         (m (quotient n total))
+         (c (remainder n total))
+         (l (string-ref reify-alphabet c)))
+    (string->symbol (make-string (+ m 1) l))))
 
