@@ -55,7 +55,7 @@ To convert from expressions of lambda calculus to combinatory logic, use the
 ### L: CL -> λ
 
 To convert from combinatory logic to expressions of lambda calculus, use the
-`L` function:
+`L` function. The resulting lambda expression is in beta normal form.
 
 ```scheme
 > (L '(C I))
