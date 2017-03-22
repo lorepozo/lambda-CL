@@ -43,13 +43,6 @@ To convert from expressions of lambda calculus to combinatory logic, use the
 
 > (T '(lambda (x) (lambda (y) ((+ (sin x)) (sin y)))))
 ;Value: ((c ((b b) ((b +) sin))) sin)
-
-> (eval (T '(((lambda (x)
-                (lambda (y)
-                  (y x)))
-              3) sin))
-        user-initial-environment)
-;Value: .1411200080598672
 ```
 
 ### L: CL -> λ
@@ -64,8 +57,13 @@ To convert from combinatory logic to expressions of lambda calculus, use the
 > (L '(((C I) 3) sin))
 ;Value: (sin 3)
 
-> (((eval (L '(C I))
-          user-initial-environment)
-    3) sin)
+> (define f (eval (L '(C I))
+                  user-initial-environment))
+;Value: f
+
+> ((f 3) sin)
 ;Value: .1411200080598672
+
+> (T (L '(C I)))
+;Value: (c i)
 ```
