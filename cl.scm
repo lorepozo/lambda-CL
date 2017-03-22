@@ -16,44 +16,48 @@
 ;;; transform lambda expressions into combinatory
 ;;;  logic expressions of the BCIKS system
 (define (T expr)
-  (cond ((abstraction? expr)
-         (let ((e (body expr))
-               (x (parameter expr)))
-           (cond ((and (and (combination? e)
-                            (same? x (operand e)))
-                       (not (free? x (operator e))))
-                  (T (operator e))) ; eta-reduction
-                 ((not (free? x e))
-                  (make-combination 'K (T e)))
-                 ((same? x e) 'I)
-                 ((and (abstraction? e) (free? x (body e)))
-                  (T (make-abstraction x (T e))))
-                 ((combination? e)
-		  (let* ((l (operator e))
-			 (r (operand e))
-			 (lf (free? x l))
-			 (rf (free? x r)))
-		    (cond ((and lf rf)
-			   (make-combination
-			    (make-combination 'S
-			     (T (make-abstraction x l)))
-			    (T (make-abstraction x r))))
-			  (lf
-			   (make-combination
-			    (make-combination 'C
-			     (T (make-abstraction x l)))
-			    (T r)))
-			  (rf
-			   (make-combination
-			    (make-combination 'B
-			     (T l))
-			    (T (make-abstraction x r))))
-			  )))
-                 (else (error "invalid expression")))))
-        ((combination? expr)
-         (make-combination (T (operator expr))
-                           (T (operand expr))))
-        (else expr)))
+  (cond
+    ((combination? expr)
+     (make-combination
+      (T (operator expr))
+      (T (operand expr))))
+    ((abstraction? expr)
+     (let ((e (body expr))
+           (x (parameter expr)))
+       (cond
+         ((and (combination? e)
+               (same? x (operand e))
+               (not (free? x (operator e))))
+          (T (operator e))) ; eta-reduction
+         ((not (free? x e))
+          (make-combination 'K (T e)))
+         ((same? x e) 'I)
+         ((and (abstraction? e)
+               (free? x (body e)))
+          (T (make-abstraction x (T e))))
+         ((combination? e)
+          (let* ((l (operator e))
+                 (r (operand e))
+                 (lf (free? x l))
+                 (rf (free? x r)))
+            (cond
+              ((and lf rf)
+               (make-combination
+                (make-combination 'S
+                 (T (make-abstraction x l)))
+                (T (make-abstraction x r))))
+              (lf
+               (make-combination
+                (make-combination 'C
+                 (T (make-abstraction x l)))
+                (T r)))
+              (rf
+               (make-combination
+                (make-combination 'B
+                 (T l))
+                (T (make-abstraction x r))))
+              ))))))
+    (else expr)))
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -87,8 +91,8 @@
     (let ((did-reduce (cdr br))
           (expr (car br)))
       (if did-reduce
-	  (repeat (beta-reduce-inner expr))
-	  expr))))
+          (repeat (beta-reduce-inner expr))
+          expr))))
 (define (beta-reduce-inner expr)
   ; does beta-reduction.
   ; returns pair: (expr . did-reduce)
@@ -97,7 +101,7 @@
          (let* ((t (indexed-body (operator expr)))
                 (v (operand expr))
                 (br (beta-reduce-inner
-		     (shift 0 -1 (substitute t 0 (shift 0 1 v))))))
+                     (shift 0 -1 (substitute t 0 (shift 0 1 v))))))
            (cons (car br) #t)))
         ((indexed-abstraction? expr)
          (let* ((br (beta-reduce-inner (indexed-body expr)))
@@ -183,9 +187,9 @@
 
 ; curried function application
 (define (combination? expr)
-  (and (and (and (pair? expr)
-                 (not (eq? (car expr) 'lambda)))
-            (not (eq? (car expr) *index*)))
+  (and (pair? expr)
+       (not (eq? (car expr) 'lambda))
+       (not (eq? (car expr) *index*))
        (not (eq? (car expr) *lambda-indexed*))))
 (define (make-combination operator operand)
   `(,operator ,operand))
@@ -208,14 +212,14 @@
 ; de bruijn index
 (define (index? idx)
   (and (pair? idx) (eq? (car idx) *index*)))
-(define (make-index n) (cons *index* `(,n)))
+(define (make-index n) `(,*index* ,n))
 (define (get-index expr) (cadr expr))
 
 ; variable-free (indexed) lambda abstraction
 (define (indexed-abstraction? expr)
   (and (pair? expr) (eq? (car expr) *lambda-indexed*)))
 (define (make-indexed-abstraction body)
-  (cons *lambda-indexed* `(,body)))
+  `(,*lambda-indexed* ,body))
 (define (indexed-body expr) (cadr expr))
 (define (list->indexed lst)
   (let walk ((l lst))
