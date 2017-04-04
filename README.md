@@ -83,3 +83,29 @@ functions, so it can use the unicode `λ` symbol rather than the verbose word
 > (P (L '(C I)))
 ; "λab.b a"
 ```
+
+## `lambda-cl.sh` — convenience script
+
+`lambda-cl` either evaluates and displays its argument (if you give it one)
+or reads from stdin and displays the expression given in the last line of
+input.
+
+```sh
+# install:
+#  first edit the script to point cl_path to the correct location, then
+$ cp lambda-cl.sh /usr/local/bin/lambda-cl
+
+# argument
+$ lambda-cl "(P (L '(C I)))"
+λab.b a
+
+# stdin
+$ lambda-cl
+(define comb '((c ((b b) ((b +) sin))) sin)) ;'you can add comments
+(define expr (L comb))
+(P expr)
+^D
+λab.+ (sin a) (sin b) 
+
+# (the ^D (Ctrl-D) signifies EOF)
+```
