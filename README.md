@@ -17,7 +17,7 @@ BCIKS system.
 ## Usage
 
 Simply load [`./cl.scm`](./cl.scm) using your preferred scheme interpreter
-and use the `T` and `L` functions. The combinators `B`, `C`, `I`, `K`, `S`
+and use the `T`, `L`, and `P` functions. The combinators `B`, `C`, `I`, `K`, `S`
 are loaded as well.
 
 ```sh
@@ -39,10 +39,10 @@ To convert from expressions of lambda calculus to combinatory logic, use the
 
 ```scheme
 > (T '(lambda (x) (lambda (y) (y x))))
-;Value: (c i)
+; (c i)
 
 > (T '(lambda (x) (lambda (y) ((+ (sin x)) (sin y)))))
-;Value: ((c ((b b) ((b +) sin))) sin)
+; ((c ((b b) ((b +) sin))) sin)
 ```
 
 ### L: CL -> λ
@@ -52,18 +52,34 @@ To convert from combinatory logic to expressions of lambda calculus, use the
 
 ```scheme
 > (L '(C I))
-;Value: (lambda (a) (lambda (b) (b a)))
+; (lambda (a) (lambda (b) (b a)))
 
 > (L '(((C I) 3) sin))
-;Value: (sin 3)
+; (sin 3)
 
 > (define f (eval (L '(C I))
                   user-initial-environment))
-;Value: f
+; f
 
 > ((f 3) sin)
-;Value: .1411200080598672
+; .1411200080598672
 
 > (T (L '(C I)))
-;Value: (c i)
+; (c i)
+```
+
+### P: λ -> uncurried and pretty
+
+To uncurry and "prettify" a lambda expression, use the `P` function. This
+will minimize use of parentheses, spaces, and lambda literals (`λaλb.b a` ->
+`λab.b a`). It returns a string, not a quoted expression like the other
+functions, so it can use the unicode `λ` symbol rather than the verbose word
+`lambda`.
+
+```scheme
+> (P '(lambda (x) (lambda (y) (lambda (z) ((((f (g x)) z) (lambda (w) ((+ y) w))) b)))))
+; "λxyz.f (g x) z (λw.+ y w) b"
+
+> (P (L '(C I)))
+; "λab.b a"
 ```

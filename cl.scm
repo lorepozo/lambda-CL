@@ -1,3 +1,9 @@
+#| basic usage:
+  (T expr) converts lambda to CL
+  (L expr) converts CL to lambda
+  (P expr) uncurries/prettifies expr into a string
+|#
+
 ;;; Schönfinkel system: BCIKS
 (define (((B f) g) x)
   (f (g x)))
@@ -170,12 +176,93 @@
         (else expr)))
 
 
+;;;;;;;;;;;;;;
+;;; pretty ;;;
+;;;;;;;;;;;;;;
+
+;;; turns an expression into an uncurried string
+(define (P e)
+  (P-join (P-lift-singletons (P-stringify (P-uncurry e)))))
+
+(define (P-uncurry e)
+  ; uncurry and turn abstractions into strings
+  (let rec ((e e))
+    (cond
+      ((combination? e)
+         (append (rec (operator e))
+                 ((if (combination? (operand e))
+                      list I) ; wrap combination in list
+                  (rec (operand e)))))
+      ((abstraction? e)
+       (let* ((x (parameter e))
+              (b (body e))
+              (nb (rec b)))
+         (if (abstraction? b)
+             (P-make-abstraction-multi x nb) ; λxy instead of λx λy
+             (P-make-abstraction x nb))))
+      (else (list e)))))
+(define (P-stringify e)
+  ; turn every node into a string
+  (let r ((e e))
+    (cond
+      ((list? e) (map r e))
+      ((P-abstraction? e)
+       (string-append e "."))
+      ((string? e) e)
+      ((symbol? e) (symbol->string e))
+      (else e))))
+(define (P-lift-singletons e)
+  ; lift singletons
+  (let r ((e e))
+    (cond
+      ((and (list? e) (= 1 (length e))) (car e))
+      ((list? e) (map r e))
+      (else e))))
+(define (P-join e)
+  ; join nodes into a string
+  (define (join r e)
+    (fold-left
+      (lambda (a b)
+        (string-append a " " b))
+      (r (car e))
+      (map r (cdr e))))
+  (define (r e)
+    (cond
+      ((and (list? e)
+            (P-abstraction? (car e))) ; λa. b -> λa.b
+       (string-append "(" (car e) (join r (cdr e)) ")"))
+      ((list? e) (string-append "(" (join r e) ")"))
+      (else e)))
+  (let ((joined (r e)))
+    (if (char=? #\( (string-ref joined 0))
+        ; remove outer parentheses
+        (substring joined 1 (- (string-length joined) 1))
+        joined)))
+
+; λ-string abstractions
+(define (P-abstraction? e)
+  (and (string? e)
+       (> (string-length e) 1)
+       (string=? "λ" (substring e 0 2))))
+(define (P-make-abstraction-multi x nb)
+  (list
+    (cons
+      (string-append "λ" (symbol->string x)
+                     (string-tail (caar nb) 1))
+      (cdar nb))))
+(define (P-make-abstraction x nb)
+  (list
+    (cons
+      (string-append "λ" (symbol->string x))
+      nb)))
+
+
 ;;;;;;;;;;;;;;;;;;;;
 ;;;    Syntax    ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
-(define *index* (generate-uninterned-symbol 'index))
-(define *lambda-indexed* (generate-uninterned-symbol 'lambda-indexed))
+(define *index* (string->uninterned-symbol "index"))
+(define *lambda-indexed* (string->uninterned-symbol "lambda-indexed"))
 
 ; classic lambda expressions
 (define (abstraction? expr)
