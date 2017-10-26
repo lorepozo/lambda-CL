@@ -16,11 +16,12 @@ BCIKS system.
 
 ## Usage
 
-Simply load [`./cl.scm`](./cl.scm) using your preferred scheme interpreter
-and use the `T`, `L`, and `P` functions. The combinators `B`, `C`, `I`, `K`, `S`
-are loaded as well.
+On Racket, require [`./cl.rkt`](./cl.rkt), and on other scheme interpreters,
+load [`./cl.scm`](./cl.scm). These provide the `T`, `L`, and `P` functions
+(described below), as well as the combinators `B`, `C`, `I`, `K`, `S`.
 
 ```sh
+$ racket -i --require cl.rkt
 $ mit-scheme -load cl.scm
 ```
 
@@ -37,7 +38,7 @@ a combinator (watch out for `i`!).
 To convert from expressions of lambda calculus to combinatory logic, use the
 `T` function:
 
-```scheme
+```racket
 > (T '(lambda (x) (lambda (y) (y x))))
 ; (c i)
 
@@ -50,17 +51,16 @@ To convert from expressions of lambda calculus to combinatory logic, use the
 To convert from combinatory logic to expressions of lambda calculus, use the
 `L` function. The resulting lambda expression is in beta normal form.
 
-```scheme
+```racket
 > (L '(C I))
 ; (lambda (a) (lambda (b) (b a)))
 
 > (L '(((C I) 3) sin))
 ; (sin 3)
 
-> (define f (eval (L '(C I))
-                  user-initial-environment))
+> #| racket     |# (define f (eval (L '(C I)) (current-namespace)))
+> #| mit-scheme |# (define f (eval (L '(C I)) user-initial-environment))
 ; f
-
 > ((f 3) sin)
 ; .1411200080598672
 
@@ -76,36 +76,10 @@ will minimize use of parentheses, spaces, and lambda literals (`λaλb.b a` ->
 functions, so it can use the unicode `λ` symbol rather than the verbose word
 `lambda`.
 
-```scheme
+```racket
 > (P '(lambda (x) (lambda (y) (lambda (z) ((((f (g x)) z) (lambda (w) ((+ y) w))) b)))))
 ; "λxyz.f (g x) z (λw.+ y w) b"
 
 > (P (L '(C I)))
 ; "λab.b a"
-```
-
-## `lambda-cl.sh` — convenience script
-
-`lambda-cl` either evaluates and displays its argument (if you give it one)
-or reads from stdin and displays the expression given in the last line of
-input.
-
-```sh
-# install:
-#  first edit the script to point cl_path to the correct location, then
-$ cp lambda-cl.sh /usr/local/bin/lambda-cl
-
-# argument
-$ lambda-cl "(P (L '(C I)))"
-λab.b a
-
-# stdin
-$ lambda-cl
-(define comb '((c ((b b) ((b +) sin))) sin)) ;'you can add comments
-(define expr (L comb))
-(P expr)
-^D
-λab.+ (sin a) (sin b) 
-
-# (the ^D (Ctrl-D) signifies EOF)
 ```
